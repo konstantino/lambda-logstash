@@ -1,0 +1,47 @@
+kind: Service
+spec:
+  type: NodePort
+  ports:
+  - protocol: TCP
+    name: http1
+    port: 9600
+  - protocol: TCP
+    name: http2
+    port: 8080
+  selector:
+    app: lambda-logstash
+apiVersion: v1
+metadata:
+  name: service-lambda-logstash
+
+---
+kind: Deployment
+spec:
+  template:
+    spec:
+      volumes:
+      - name: config-volume
+        configMap:
+          name: pipeline-config
+          items:
+          - key: pipeline.conf
+            path: pipeline.conf
+      containers:
+      - name: lambda-logstash
+        securityContext:
+          privileged: true
+        image: docker.elastic.co/logstash/logstash-oss:6.2.3
+        volumeMounts:
+        - name: config-volume
+          mountPath: /usr/share/logstash/pipeline
+        ports:
+        - containerPort: 9600
+        - containerPort: 8080
+        imagePullPolicy: IfNotPresent
+    metadata:
+      labels:
+        app: lambda-logstash
+  replicas: 1
+apiVersion: extensions/v1beta1
+metadata:
+  name: lambda-logstash
